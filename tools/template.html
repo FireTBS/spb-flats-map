@@ -112,7 +112,7 @@ document.getElementById("sub").textContent =
   `Всего ${FLATS.length}. Нажмите на подпись, чтобы увидеть подробности. Обновлено ${UPDATED}.`;
 
 const pts = FLATS.map(f => [f.lat, f.lon]);
-const fit = () => { map.invalidateSize(); if (pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.05)); };
+const fit = () => { map.invalidateSize(); if (pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.05), {animate:false}); };
 fit();
 window.addEventListener("load", fit);
 window.addEventListener("resize", () => map.invalidateSize());
