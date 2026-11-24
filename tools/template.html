@@ -116,6 +116,10 @@ const fit = () => { map.invalidateSize(); if (pts.length) map.fitBounds(L.latLng
 fit();
 window.addEventListener("load", fit);
 window.addEventListener("resize", () => map.invalidateSize());
+if (window.ResizeObserver) {
+  let fitted = false;
+  new ResizeObserver(() => { map.invalidateSize(); if (!fitted) { fitted = true; fit(); } }).observe(document.getElementById("map"));
+}
 setTimeout(fit, 300);
 </script>
 </body>
