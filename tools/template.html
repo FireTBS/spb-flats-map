@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Квартиры Петербурга</title>
+<meta name="description" content="Карта квартир под выкуп в Петербурге: цена, площадь, этаж, метро и ссылка на объявление.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --bg:#ffffff; --fg:#1d2433; --muted:#5b6475; --line:#d9dde5; --panel:#ffffffee;
+  --link:#0b57d0;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --bg:#161a22; --fg:#e8ebf2; --muted:#9aa3b5; --line:#2c3342; --panel:#161a22ee; --link:#8ab4f8; }
+}
+:root[data-theme="dark"]{ --bg:#161a22; --fg:#e8ebf2; --muted:#9aa3b5; --line:#2c3342; --panel:#161a22ee; --link:#8ab4f8; }
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column}
+header{padding:10px 16px;border-bottom:1px solid var(--line);background:var(--bg)}
+h1{font-size:17px;margin:0 0 6px;font-weight:650}
+.sub{color:var(--muted);font-size:13px;margin-bottom:8px}
+.legend{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:999px;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer}
+.chip i{width:14px;height:14px;border-radius:4px;border:1px solid rgba(0,0,0,.35);display:inline-block}
+.chip.off{opacity:.4;text-decoration:line-through}
+#map{flex:1;min-height:0}
+.tag{position:absolute;left:0;top:0;white-space:nowrap;font:600 12px/1 system-ui,sans-serif;padding:4px 6px;border-radius:5px;border:1px solid rgba(0,0,0,.45);box-shadow:0 1px 3px rgba(0,0,0,.35);cursor:pointer}
+.tag.first::after{content:"";position:absolute;left:50%;bottom:-6px;margin-left:-5px;border:5px solid transparent;border-top-color:rgba(0,0,0,.55);border-bottom:0}
+.leaflet-marker-icon:hover{z-index:100000 !important}
+.pop h2{font-size:15px;margin:0 0 4px}
+.pop table{border-collapse:collapse;margin:4px 0 8px}
+.pop td{padding:1px 8px 1px 0;vertical-align:top;font-size:13px}
+.pop td:first-child{color:#667085}
+.pop a.btn{display:inline-block;background:#0b57d0;color:#fff;text-decoration:none;padding:6px 12px;border-radius:6px;font-size:13px}
+@media (max-width:560px){ h1{font-size:15px} .sub{display:none} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Квартиры под выкуп в Петербурге</h1>
+  <div class="sub" id="sub"></div>
+  <div class="legend" id="legend"></div>
+</header>
+<div id="map"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const FLATS = __DATA__;
+const UPDATED = "__UPDATED__";
+
+const BANDS = [
+  {max:20e6,  label:"до 20 млн",   bg:"#1a9850", fg:"#ffffff"},
+  {max:30e6,  label:"20–30 млн",   bg:"#a6d96a", fg:"#1b1b1b"},
+  {max:45e6,  label:"30–45 млн",   bg:"#fee08b", fg:"#1b1b1b"},
+  {max:60e6,  label:"45–60 млн",   bg:"#f46d43", fg:"#1b1b1b"},
+  {max:1e12,  label:"от 60 млн",   bg:"#d73027", fg:"#ffffff"}
+];
+const bandOf = p => BANDS.findIndex(b => p < b.max);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const short = p => { const m = Math.round(p/1e5)/10; return String(m).replace(".", ",") + " млн"; };
+const rub = p => Math.round(p).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽";
+
+const map = L.map("map", {zoomControl:true}).setView([59.94, 30.32], 12);
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+}).addTo(map);
+
+// Квартиры в одном доме выставляем столбиком, чтобы подписи не слипались
+const seen = {};
+const layers = BANDS.map(() => L.layerGroup().addTo(map));
+const counts = BANDS.map(() => 0);
+
+FLATS.forEach(f => {
+  const key = f.lat.toFixed(5) + "," + f.lon.toFixed(5);
+  const idx = seen[key] = (seen[key] ?? -1) + 1;
+  const bi = bandOf(f.price); counts[bi]++;
+  const b = BANDS[bi];
+  const lift = 8 + idx * 22;
+  const icon = L.divIcon({
+    className: "",
+    iconSize: [0, 0],
+    html: `<div class="tag ${idx===0?"first":""}" style="background:${b.bg};color:${b.fg};transform:translate(-50%,calc(-100% - ${lift}px))">№${esc(f.no)} · ${short(f.price)}</div>`
+  });
+  const rows = [
+    ["Адрес", f.addr], ["Район", f.district],
+    ["Метро", f.metro + (f.walk ? ` (${f.walk} мин пешком)` : "")],
+    ["Площадь", f.area + " м²"], ["Комнат", f.rooms], ["Этаж", f.floor],
+    ["Цена за м²", f.ppm ? f.ppm + " ₽" : ""],
+    ["Ремонт", f.cond], ["Парковка", f.parking], ["Дом", f.fund]
+  ].filter(r => r[1]);
+  const html = `<div class="pop"><h2>№${esc(f.no)} · ${rub(f.price)}</h2><table>` +
+    rows.map(r => `<tr><td>${r[0]}</td><td>${esc(r[1])}</td></tr>`).join("") +
+    `</table>` + (f.link ? `<a class="btn" href="${esc(f.link)}" target="_blank" rel="noopener">Открыть объявление</a>` : "") + `</div>`;
+  L.marker([f.lat, f.lon], {icon}).bindPopup(html, {maxWidth: 300}).addTo(layers[bi]);
+});
+
+// Легенда: нажатие скрывает или показывает группу
+const legend = document.getElementById("legend");
+BANDS.forEach((b, i) => {
+  const el = document.createElement("button");
+  el.className = "chip"; el.type = "button";
+  el.innerHTML = `<i style="background:${b.bg}"></i>${b.label} · ${counts[i]}`;
+  el.onclick = () => {
+    const off = el.classList.toggle("off");
+    off ? map.removeLayer(layers[i]) : map.addLayer(layers[i]);
+  };
+  legend.appendChild(el);
+});
+document.getElementById("sub").textContent =
+  `Всего ${FLATS.length}. Нажмите на подпись, чтобы увидеть подробности. Обновлено ${UPDATED}.`;
+
+const pts = FLATS.map(f => [f.lat, f.lon]);
+if (pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.05));
+</script>
+</body>
+</html>
