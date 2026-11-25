@@ -46,6 +46,6 @@ for r in rows:
 
 html = open(TEMPLATE, encoding="utf-8").read()
 html = html.replace("__DATA__", json.dumps(flats, ensure_ascii=False, separators=(",", ":")))
-html = html.replace("__UPDATED__", datetime.date(2026, 11, 24).strftime("%d.%m.%Y"))
+html = html.replace("__UPDATED__", datetime.date.today().strftime("%d.%m.%Y"))
 open(OUT_DIR + "/index.html", "w", encoding="utf-8").write(html)
 print("flats", len(flats), "skipped", skipped)
