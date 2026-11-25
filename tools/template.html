@@ -22,6 +22,10 @@ header{padding:10px 16px;border-bottom:1px solid var(--line);background:var(--bg
 h1{font-size:17px;margin:0 0 6px;font-weight:650}
 .sub{color:var(--muted);font-size:13px;margin-bottom:8px}
 .legend{display:flex;flex-wrap:wrap;gap:6px}
+.search{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px}
+.search input{width:11em;max-width:100%;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);font:inherit;font-size:14px}
+.search button{padding:6px 12px;border:0;border-radius:6px;background:#0b57d0;color:#fff;font:inherit;font-size:14px;cursor:pointer}
+.search .msg{color:var(--muted);font-size:13px}
 .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:999px;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer}
 .chip i{width:14px;height:14px;border-radius:4px;border:1px solid rgba(0,0,0,.35);display:inline-block}
 .chip.off{opacity:.4;text-decoration:line-through}
@@ -41,6 +45,11 @@ h1{font-size:17px;margin:0 0 6px;font-weight:650}
 <header>
   <h1>Квартиры под выкуп в Петербурге</h1>
   <div class="sub" id="sub"></div>
+  <form class="search" id="search" autocomplete="off">
+    <input id="q" type="search" inputmode="numeric" placeholder="Номер квартиры" aria-label="Номер квартиры в таблице">
+    <button type="submit">Найти</button>
+    <span class="msg" id="msg"></span>
+  </form>
   <div class="legend" id="legend"></div>
 </header>
 <div id="map"></div>
@@ -71,6 +80,8 @@ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
 const seen = {};
 const layers = BANDS.map(() => L.layerGroup().addTo(map));
 const counts = BANDS.map(() => 0);
+const byNo = {};
+const chips = [];
 
 FLATS.forEach(f => {
   const key = f.lat.toFixed(5) + "," + f.lon.toFixed(5);
@@ -93,7 +104,8 @@ FLATS.forEach(f => {
   const html = `<div class="pop"><h2>№${esc(f.no)} · ${rub(f.price)}</h2><table>` +
     rows.map(r => `<tr><td>${r[0]}</td><td>${esc(r[1])}</td></tr>`).join("") +
     `</table>` + (f.link ? `<a class="btn" href="${esc(f.link)}" target="_blank" rel="noopener">Открыть объявление</a>` : "") + `</div>`;
-  L.marker([f.lat, f.lon], {icon}).bindPopup(html, {maxWidth: 300}).addTo(layers[bi]);
+  const marker = L.marker([f.lat, f.lon], {icon}).bindPopup(html, {maxWidth: 300}).addTo(layers[bi]);
+  byNo[f.no] = {marker, bi};
 });
 
 // Легенда: нажатие скрывает или показывает группу
@@ -106,10 +118,25 @@ BANDS.forEach((b, i) => {
     const off = el.classList.toggle("off");
     off ? map.removeLayer(layers[i]) : map.addLayer(layers[i]);
   };
+  chips.push(el);
   legend.appendChild(el);
 });
 document.getElementById("sub").textContent =
   `Всего ${FLATS.length}. Нажмите на подпись, чтобы увидеть подробности. Обновлено ${UPDATED}.`;
+
+// Поиск по номеру квартиры из таблицы
+document.getElementById("search").addEventListener("submit", e => {
+  e.preventDefault();
+  const msg = document.getElementById("msg");
+  const no = (document.getElementById("q").value.match(/\d+/) || [""])[0].replace(/^0+(?=\d)/, "");
+  const hit = byNo[no];
+  if (!no) { msg.textContent = "Введите номер"; return; }
+  if (!hit) { msg.textContent = `Квартиры №${no} нет на карте`; return; }
+  msg.textContent = "";
+  if (!map.hasLayer(layers[hit.bi])) chips[hit.bi].click();   // группа цены была скрыта, включаем
+  map.setView(hit.marker.getLatLng(), Math.max(map.getZoom(), 16), {animate: false});
+  hit.marker.openPopup();
+});
 
 const pts = FLATS.map(f => [f.lat, f.lon]);
 const fit = () => {
