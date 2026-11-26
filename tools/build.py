@@ -15,11 +15,14 @@ for l in open(COORDS):
     if len(p) == 3:
         co[p[0]] = (float(p[1]), float(p[2]))
 
+# В таблице у цены есть оттенки (светло-зелёный, светло-синий). На карте оставляем 5 цветов:
+# голубой, жёлтый, зелёный, оранжевый, красный.
+GROUP = {"G": "G", "L": "G", "Y": "Y", "O": "O", "R": "R", "B": "B", "D": "B"}
 colors = {}
 for l in open(COLORS):
     p = l.split()
     if len(p) >= 2:
-        colors[p[0]] = p[1]
+        colors[p[0]] = GROUP.get(p[1], "N")
 
 def num(s):
     s = re.sub(r"[^\d,\.]", "", s.replace(" ", "")).replace(",", ".")
