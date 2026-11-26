@@ -58,14 +58,18 @@ h1{font-size:17px;margin:0 0 6px;font-weight:650}
 const FLATS = __DATA__;
 const UPDATED = "__UPDATED__";
 
+// Цвета меток — такие же, как цвет ячейки цены в таблице
 const BANDS = [
-  {max:20e6,  label:"до 20 млн",   bg:"#1a9850", fg:"#ffffff"},
-  {max:30e6,  label:"20–30 млн",   bg:"#a6d96a", fg:"#1b1b1b"},
-  {max:45e6,  label:"30–45 млн",   bg:"#fee08b", fg:"#1b1b1b"},
-  {max:60e6,  label:"45–60 млн",   bg:"#f46d43", fg:"#1b1b1b"},
-  {max:1e12,  label:"от 60 млн",   bg:"#d73027", fg:"#ffffff"}
+  {code:"G", label:"Зелёный",        bg:"#92c47c"},
+  {code:"L", label:"Светло-зелёный", bg:"#b6d6a8"},
+  {code:"Y", label:"Жёлтый",         bg:"#ffd966"},
+  {code:"O", label:"Оранжевый",      bg:"#f6b16b"},
+  {code:"R", label:"Красный",        bg:"#df6666"},
+  {code:"B", label:"Голубой",        bg:"#97d5f5"},
+  {code:"D", label:"Светло-синий",   bg:"#9fc5e8"},
+  {code:"N", label:"Без цвета",      bg:"#ffffff"}
 ];
-const bandOf = p => BANDS.findIndex(b => p < b.max);
+const bandOf = f => Math.max(0, BANDS.findIndex(b => b.code === f.color));
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const short = p => { const m = Math.round(p/1e5)/10; return String(m).replace(".", ",") + " млн"; };
 const rub = p => Math.round(p).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₽";
@@ -86,13 +90,13 @@ const chips = [];
 FLATS.forEach(f => {
   const key = f.lat.toFixed(5) + "," + f.lon.toFixed(5);
   const idx = seen[key] = (seen[key] ?? -1) + 1;
-  const bi = bandOf(f.price); counts[bi]++;
+  const bi = bandOf(f); counts[bi]++;
   const b = BANDS[bi];
   const lift = 8 + idx * 22;
   const icon = L.divIcon({
     className: "",
     iconSize: [0, 0],
-    html: `<div class="tag ${idx===0?"first":""}" style="background:${b.bg};color:${b.fg};transform:translate(-50%,calc(-100% - ${lift}px))">№${esc(f.no)} · ${short(f.price)}</div>`
+    html: `<div class="tag ${idx===0?"first":""}" style="background:${b.bg};color:#1b1b1b;transform:translate(-50%,calc(-100% - ${lift}px))">№${esc(f.no)} · ${short(f.price)}</div>`
   });
   const rows = [
     ["Адрес", f.addr], ["Район", f.district],
@@ -111,6 +115,7 @@ FLATS.forEach(f => {
 // Легенда: нажатие скрывает или показывает группу
 const legend = document.getElementById("legend");
 BANDS.forEach((b, i) => {
+  if (!counts[i]) { chips.push(null); return; }
   const el = document.createElement("button");
   el.className = "chip"; el.type = "button";
   el.innerHTML = `<i style="background:${b.bg}"></i>${b.label} · ${counts[i]}`;
@@ -133,7 +138,7 @@ document.getElementById("search").addEventListener("submit", e => {
   if (!no) { msg.textContent = "Введите номер"; return; }
   if (!hit) { msg.textContent = `Квартиры №${no} нет на карте`; return; }
   msg.textContent = "";
-  if (!map.hasLayer(layers[hit.bi])) chips[hit.bi].click();   // группа цены была скрыта, включаем
+  if (!map.hasLayer(layers[hit.bi])) chips[hit.bi].click();   // эта группа была скрыта, включаем
   map.setView(hit.marker.getLatLng(), Math.max(map.getZoom(), 16), {animate: false});
   hit.marker.openPopup();
 });
