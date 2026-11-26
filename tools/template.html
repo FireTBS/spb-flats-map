@@ -58,16 +58,14 @@ h1{font-size:17px;margin:0 0 6px;font-weight:650}
 const FLATS = __DATA__;
 const UPDATED = "__UPDATED__";
 
-// Цвета меток — такие же, как цвет ячейки цены в таблице
+// Пять цветов, как в таблице: оценка цены к рынку
 const BANDS = [
-  {code:"G", label:"Зелёный",        bg:"#92c47c"},
-  {code:"L", label:"Светло-зелёный", bg:"#b6d6a8"},
-  {code:"Y", label:"Жёлтый",         bg:"#ffd966"},
-  {code:"O", label:"Оранжевый",      bg:"#f6b16b"},
-  {code:"R", label:"Красный",        bg:"#df6666"},
-  {code:"B", label:"Голубой",        bg:"#97d5f5"},
-  {code:"D", label:"Светло-синий",   bg:"#9fc5e8"},
-  {code:"N", label:"Без цвета",      bg:"#ffffff"}
+  {code:"B", label:"Сильно ниже рынка", bg:"#97d5f5"},
+  {code:"Y", label:"Ниже рынка",        bg:"#ffd966"},
+  {code:"G", label:"Рыночная цена",     bg:"#92c47c"},
+  {code:"O", label:"Выше рынка",        bg:"#f6b16b"},
+  {code:"R", label:"Сильно выше рынка", bg:"#df6666"},
+  {code:"N", label:"Без оценки",        bg:"#ffffff"}
 ];
 const bandOf = f => Math.max(0, BANDS.findIndex(b => b.code === f.color));
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
